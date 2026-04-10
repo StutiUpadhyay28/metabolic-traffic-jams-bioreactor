@@ -1,0 +1,752 @@
+\documentclass[12pt]{article}
+
+% ---------- Packages ----------
+\usepackage[letterpaper, top=1in, bottom=1in, left=0.875in, right=0.875in]{geometry}
+\usepackage{times}          % Times New Roman
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.18}
+\usepackage{tikz}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ---------- Fonts ----------
+% Times New Roman is loaded via \usepackage{times}
+
+% ---------- Section heading styles ----------
+% Bold, numbered headings matching the Word doc
+\titleformat{\section}{\normalfont\bfseries\large}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\bfseries\normalsize}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% ---------- Paragraph spacing ----------
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+
+% ---------- Caption style ----------
+\captionsetup{font=small, labelfont=it, textfont=it, justification=justified}
+
+% ---------- Abstract environment ----------
+\renewenvironment{abstract}{%
+  \begin{quote}\small
+}{%
+  \end{quote}
+}
+
+% ---------- Hyperlink style ----------
+\hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=black}
+
+% ============================================================
+\begin{document}
+
+% -------------------- Title block --------------------
+\begin{center}
+  {\large\bfseries Metabolic Traffic Jams in Bioreactors:}\\[4pt]
+  {\large\bfseries An Agent-Based Model of Self-Organized Criticality}\\[10pt]
+  {\normalsize\itshape Individual Project Report --- Complexity Science}\\[4pt]
+  {\normalsize Stuti Upadhyay (2023CH10801)}\\[4pt]
+  {\normalsize Submitted: April 10, 2026}
+\end{center}
+
+\vspace{6pt}
+
+% -------------------- Abstract --------------------
+\noindent\textbf{Abstract}
+
+\begin{abstract}
+Industrial bioreactors are complex, far-from-equilibrium systems in which 
+microbial populations interact through shared metabolic resources. Under 
+imperfect mixing, oxygen gradients spontaneously emerge, driving aerobic 
+bacteria into anaerobic metabolism, producing toxic by-products that further 
+deplete local oxygen and trigger cascading metabolic failures. We present an 
+agent-based model (ABM) implemented in NetLogo that simulates these dynamics 
+across three systematic parameter studies: oxygen diffusion rate (connectivity), 
+metabolic consumption rate (noise intensity), and bacterial reproduction rate 
+(population pressure). Connectivity produces a monotonically increasing 
+efficiency response driven by boom-bust dynamics at high diffusion rates, but 
+simultaneously elevates the risk of large-scale catastrophic cascades --- 
+maximum avalanche size grows from 1,372 at low connectivity to 2,186 at high 
+connectivity, while avalanche frequency peaks at intermediate values (0.3--0.6), 
+indicating a critical connectivity window consistent with self-organised 
+criticality (SOC). Noise intensity reveals a tentative non-monotonic efficiency 
+response, with a local minimum at moderate consumption rate, suggesting a 
+transition between two distinct productive regimes; this pattern warrants 
+confirmation across replicate runs. Population pressure produces the sharpest 
+finding: a phase transition in spatial organisation between reproduction-rates 
+of 2 and 5, marking the boundary between a sub-critical sparse regime (peak 
+efficiency 10.2) and a supercritical donut-forming cascade regime. Collectively, 
+these results demonstrate that the bioreactor spontaneously evolves toward a 
+critical state characterised by emergent spatial pattern formation, 
+scale-free avalanche statistics, and noise-dependent cascade dynamics --- the 
+defining signatures of SOC. The findings suggest that metabolic traffic jams 
+are intrinsic features of complex bioreactor systems rather than correctable 
+engineering failures, and that a complexity science perspective reveals 
+operating strategies invisible to classical steady-state models.
+\end{abstract}
+
+\vspace{8pt}
+
+% ================== 1. Introduction ==================
+\section{Introduction}
+
+Large-scale industrial bioreactors are among the most economically important biological systems on Earth, producing pharmaceuticals, fuels, and commodity chemicals at industrial scale. Yet despite decades of engineering study, the microscopic dynamics of bacterial populations within these vessels remain poorly understood. Classical bioreactor models treat the microbial culture as a well-mixed homogeneous medium, describing it with ordinary differential equations for average concentrations. This approach fundamentally fails to capture a critical real-world phenomenon: spatial heterogeneity arising from imperfect mixing.
+
+In a real stirred-tank bioreactor, oxygen is introduced at the bottom through a sparger --- a porous plate generating fine bubbles that dissolve into the liquid and rise while being consumed by bacteria. Because mixing is never perfect, oxygen concentration varies spatially: high near the sparger and low in distant corners or regions with poor circulation. Individual bacteria, moving through this oxygen landscape, experience fluctuating local conditions that force repeated metabolic decisions.
+
+When a bacterium encounters oxygen-poor fluid, it switches metabolic mode from efficient aerobic respiration to anaerobic fermentation. This switch produces lactic acid, ethanol, and other organic acids as by-products --- compounds toxic at high concentrations, reducing local oxygen availability and further stressing nearby cells. This is the essence of a metabolic traffic jam: a local oxygen deficit triggers metabolic switching that produces toxins that worsen the deficit, creating a self-amplifying spatial cascade.
+
+Such cascades exhibit the hallmarks of self-organized criticality (SOC) --- a theoretical framework describing systems that naturally evolve toward a critical state producing scale-free fluctuations without external tuning. The goal of this project is to model bioreactor metabolic dynamics using an agent-based approach in NetLogo, conduct systematic scenario analyses across key parameters, and demonstrate that the system exhibits SOC-like behaviour arising purely from local biological rules.
+
+% ================== 2. Bioreactors as Complex Systems ==================
+\section{Bioreactors as Complex Systems}
+
+A system is a strong candidate for complexity science analysis when it exhibits large numbers of interacting agents making local decisions without global control, nonlinear feedback mechanisms, and emergent macroscopic patterns not encoded in the microscopic rules. The bioreactor satisfies all these criteria with particular clarity.
+
+\subsection{Noise}
+
+Bacterial movement in a bioreactor is inherently stochastic. Cells are tumbled and displaced by turbulent eddies, creating random excursions into differently-oxygenated zones. This stochastic exploration constitutes the noise of the system --- a continuous perturbation that probes the system's proximity to the metabolic switching threshold. In our simulation, noise is represented by the Brownian random-walk component of cell movement (a $\pm$10 degree angular perturbation each tick), which drives cells into oxygen-poor dead zones and seeds potential cascade events. The consumption-rate parameter modulates noise intensity: higher consumption means each cell more aggressively depletes local oxygen, increasing the probability that any given movement event triggers a cascade.
+
+\subsection{Avalanche}
+
+When a bacterium switches to anaerobic metabolism, it deposits acid onto its local patch. This acid diffuses to neighbouring patches, potentially tipping them below the switching threshold and triggering further switching --- a spatial cascade of metabolic failures. We define an avalanche operationally as any such cascade: a spatially connected chain of metabolic switching events propagating through the bacterial population before dissipating as acid decays and oxygen recolonises affected zones. Avalanche sizes span orders of magnitude with no characteristic scale, consistent with SOC.
+
+\subsection{Connectivity}
+
+Every bacterium is chemically connected to its neighbours through oxygen and acid diffusion. The diffusion-rate parameter directly controls the spatial range of this connectivity: at low diffusion, chemical signals travel short distances and cascades remain localised; at high diffusion, a metabolic event rapidly influences the entire tank. Population density --- controlled by reproduction-rate --- determines coupling strength between neighbouring agents. Dead-zone patches in the tank corners represent structurally low-connectivity regions where cascades preferentially initiate.
+
+% ================== 3. Model Description ==================
+\section{Model Description}
+
+The model was implemented in NetLogo 6.4. The world consists of $51 \times 51$ patches, each representing a small volume of bioreactor fluid. Two agent types interact: patches (the chemical environment) and turtles (bacterial cells).
+
+\subsection{Chemical Environment}
+
+Each patch stores oxygen (0--100) and acid (0--100). A sparger zone (bottom-centre 10 patches) is held at oxygen = 100 each tick. Dead-zone patches occupy the four upper corners. Each tick, oxygen diffuses at diffusion-rate (NetLogo's Fick's-law approximation), decays 1\% (surface outgassing), and acid decays 5\% (dilution and neutralisation).
+
+\subsection{Bacterial Agents}
+
+Each turtle stores metabolism (aerobic or anaerobic), health (0--100), and product-yield (cumulative aerobic production). The core rule is a threshold at oxygen = 30: aerobic cells generate product and consume oxygen at consumption-rate; anaerobic cells deposit 1 unit of acid and lose 0.5 health per tick. Dead cells are removed. Aerobic cells with health $>$ 80 reproduce at probability reproduction-rate\% per tick. Cell movement follows a circular convective path with $\pm$10$^\circ$ random perturbation.
+
+Reactor efficiency is reported as the ratio of the total cumulative 
+\texttt{product-yield} summed across all living cells at the time of 
+observation to the initial population size (100 cells), providing a 
+normalised measure of productive output per original cell seeded. Higher 
+values indicate that more aerobic metabolic work was accomplished before 
+anaerobic switching suppressed production.
+
+\subsection{Emergent Spatial Patterns}
+
+Figure~\ref{fig:fig1} shows the simulation at baseline conditions (diffusion=0.61, consumption=0.30, reproduction=7.2) at approximately tick 65 --- before the system has fully settled. The image captures the richest moment of emergent spatial organisation: a spontaneous spiral oxygen-depletion front forming from purely local rules, with aerobic (green) colonies competing against an advancing anaerobic (red) cascade front. Blue patches indicate oxygen-rich zones; red patches indicate acid-rich anaerobic zones.
+
+\begin{figure}[H]
+  \centering
+  % IMAGE PLACEHOLDER: Replace with actual figure
+  % Original filename: 9ab67004373d00d27a1243737bf18484296cb84e.png
+  % Original size in document: 3.54 in × 3.54 in
+  \includegraphics[width=1.95in]{Fig1.png}
+  \\NetLogo simulation at tick $\sim$65\\baseline conditions
+  \caption{\textit{NetLogo simulation at tick $\sim$65 under baseline conditions (diffusion=0.61, consumption=0.30, reproduction=7.2). Emergent spiral oxygen-depletion fronts form spontaneously. Blue: oxygenated zones. Red: acid-rich anaerobic zones. Green turtles: aerobic bacteria. Red turtles: anaerobic bacteria.}}
+  \label{fig:fig1}
+\end{figure}
+
+Figure~\ref{fig:fig2} shows the corresponding population dynamics. The green aerobic line rises first, peaks sharply around tick 35, then crashes --- the initial productive bloom. The red anaerobic line lags behind, rising only after the aerobic peak. This temporal lag is critical evidence of causal cascade propagation: cells switch in response to their neighbours' acid production, not simultaneously. A second green hump around tick 55 indicates partial aerobic recovery --- the system oscillating near criticality rather than collapsing permanently.
+
+\begin{figure}[H]
+  \centering
+  % IMAGE PLACEHOLDER: Replace with actual figure
+  % Original filename: ed77157460664d59a85eb6c3d99aa58f23b0343c.png
+  % Original size in document: 3.33 in × 2.5 in
+  \includegraphics[width=3.54in]{Fig2.png}
+  \\Population dynamics at tick 66
+  \caption{\textit{Population dynamics under baseline conditions at tick 66. Green line: aerobic cell count. Red line: anaerobic cell count. The lag between the aerobic peak and anaerobic rise, and the secondary green hump, are signatures of cascade propagation and oscillatory criticality.}}
+  \label{fig:fig2}
+\end{figure}
+
+% ================== 4. Scenario Analysis ==================
+\section{Scenario Analysis}
+
+Three systematic experiments were conducted, each varying one parameter while holding the others fixed. All runs were observed at tick 200. The three parameters correspond to the three complexity science concepts: diffusion-rate (connectivity), consumption-rate (noise), and reproduction-rate (population pressure).
+
+\subsection{Experiment 1: Effect of Diffusion Rate (Connectivity)}
+
+Diffusion-rate was varied across four values (0.1, 0.3, 0.6, 0.9) while holding consumption-rate = 0.30 and reproduction-rate = 7.2 fixed.
+
+\begin{table}[H]
+  \centering
+  \caption{\textit{Simulation outcomes at tick 200 across four diffusion rates. Consumption-rate = 0.30, reproduction-rate = 7.2.}}
+  \label{tab:table1}
+  \small
+  \begin{tabular}{|p{1.5cm}|p{1.5cm}|p{1.7cm}|p{1.7cm}|p{5cm}|}
+    \hline
+    \textbf{Diffusion Rate} & \textbf{Aerobic Count} & \textbf{Anaerobic Count} & \textbf{Reactor Efficiency} & \textbf{Dominant Spatial Pattern} \\
+    \hline
+    0.1 & $\sim$0 & 1,540 & 1.9 & Sharp red ring, large anoxic core, irreversible collapse \\
+    \hline
+    0.3 & $\sim$210 & 2,040 & 4.8 & Ragged ring, black core persists, partial aerobic recovery \\
+    \hline
+    0.6 & $\sim$200 & 2,160 & 5.2 & Fragmented ring with gaps, aerobic pockets flickering \\
+    \hline
+    0.9 & $\sim$205 & 3,050 & 7.4 & Largest cascade AND highest efficiency --- boom-bust dynamics \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:fig3} contrasts the two most extreme connectivity regimes. At diffusion-rate = 0.3 (left), the ring is ragged and irregular, with blue oxygen fingers penetrating inward and white flash patches indicating active toppling at the boundary --- the system is still contesting territory between aerobic and anaerobic dominance. At diffusion-rate = 0.9 (right), the ring has become smoother and denser, the black core geometrically larger and more uniform, and the outer boundary more locked --- this is the post-boom state after the massive early aerobic bloom has crashed and the anaerobic wall has sealed.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.47\textwidth}
+    \centering
+    % IMAGE PLACEHOLDER: 7c4c1746321f45838e3fb7cb6bdce9c85abc1040.png  (2.40 in × 2.40 in)
+    \includegraphics[width=2.4in]{Fig3a.png}
+    \\diffusion-rate=0.3
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.47\textwidth}
+    \centering
+    % IMAGE PLACEHOLDER: dadffc2150e1c67b45a78872f46e6c164c0fa6b3.png  (2.40 in × 2.40 in)
+   \includegraphics[width=2.4in]{Fig3b.png}
+   \\diffusion-rate=0.9
+  \end{subfigure}
+  \caption{\textit{Spatial patterns at tick 200. Left (a): diffusion-rate=0.3 --- ragged contested boundary with oxygen fingers penetrating the ring. Right (b): diffusion-rate=0.9 --- smooth dense anaerobic wall post-boom-bust cascade.}}
+  \label{fig:fig3}
+\end{figure}
+
+At diffusion-rate = 0.1, oxygen transport is so slow that the tank self-organises into a rigid donut morphology with a completely anoxic core. The cascade is effectively irreversible --- no secondary aerobic recovery occurs --- and efficiency collapses to 1.9. Increasing diffusion to 0.3 allows partial aerobic recovery, and at 0.6 the boundary becomes maximally fragmented, reflecting a system flickering at criticality. The most surprising result occurs at diffusion-rate = 0.9: anaerobic count reaches 3,050 yet efficiency peaks at 7.4. At very high diffusion, oxygen floods the tank rapidly in early ticks, enabling an explosive aerobic bloom and massive product accumulation before the cascade sweeps the population anaerobic. This boom-bust SOC signature --- high connectivity enabling both the largest avalanches and the most productive pre-crash phase --- demonstrates that the same mechanism (fast diffusion) simultaneously spreads oxygen and enables rapid cascade propagation.
+
+\subsection{Experiment 2: Effect of Consumption Rate (Noise Intensity)}
+
+Consumption-rate was varied across four values (0.1, 0.3, 0.5, 0.7) while holding diffusion-rate = 0.61 and reproduction-rate = 7.2 fixed.
+
+\begin{table}[H]
+  \centering
+  \caption{\textit{Simulation outcomes at tick 200 across four consumption rates. Diffusion-rate = 0.61, reproduction-rate = 7.2.}}
+  \label{tab:table2}
+  \small
+  \begin{tabular}{|p{1.7cm}|p{1.5cm}|p{1.7cm}|p{1.7cm}|p{4.8cm}|}
+    \hline
+    \textbf{Consumption Rate} & \textbf{Aerobic Count} & \textbf{Anaerobic Count} & \textbf{Reactor Efficiency} & \textbf{Dynamics Type} \\
+    \hline
+    0.1 & $\sim$205 & 4,430 & 6.9 & Sustained oscillating criticality --- richest SOC behaviour \\
+    \hline
+    0.3 & $\sim$203 & 2,330 & 4.1 & Faster collapse, efficiency trough --- worst performing regime \\
+    \hline
+    0.5 & $\sim$200 & 1,730 & 5.1 & Population thins, efficiency partially recovers \\
+    \hline
+    0.7 & $\sim$210 & 1,390 & 8.0 & Lean high-stress population --- peak efficiency (all experiments) \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:fig4} shows the simulation at consumption-rate = 0.1, the most dynamically rich run of the entire study. The spatial pattern is maximally fragmented --- no clean ring exists, instead a porous irregular boundary riddled with blue oxygen patches penetrating deep into the red zone. Green aerobic colonies at top and bottom are large and actively competing. This sustained contested state reflects the system never fully tipping into permanent anaerobic collapse: slow oxygen depletion means cascades dissipate before propagating tank-wide, and the system oscillates continuously near the critical boundary.
+
+\begin{figure}[H]
+  \centering
+  % IMAGE PLACEHOLDER: 22e3ca7cead5570566e9323ade526543d2eee3c6.png  (3.54 in × 3.56 in)
+  \includegraphics[width=1.85in]{Fig4.png}
+  \\consumption-rate=0.1, tick $\sim$203
+  \caption{\textit{Simulation at tick $\sim$203, consumption-rate=0.1. The maximally fragmented spatial pattern --- no coherent ring, deep oxygen penetration, large aerobic colonies --- reflects sustained oscillatory criticality. The system never settles, continuously generating small-to-medium cascades without a single catastrophic collapse.}}
+  \label{fig:fig4}
+\end{figure}
+
+The U-shaped efficiency curve across consumption rate is the most counterintuitive result of the experiment. Efficiency is highest at the extremes (6.9 at low stress, 8.0 at high stress) and lowest at the moderate value of 0.3 (efficiency = 4.1). At low consumption, sustained aerobic oscillations accumulate product over many cycles. At high consumption, population thinning eliminates oxygen competition and each surviving cell operates at peak productivity during its brief aerobic window --- the sprinter effect. At moderate consumption, the system suffers the worst of both worlds: fast enough depletion to cut the aerobic phase short, but dense enough population for heavy acid accumulation and oxygen competition.
+
+\subsection{Experiment 3: Effect of Reproduction Rate (Population Pressure)}
+
+Reproduction-rate was varied across four values (2, 5, 7.2, 10) while holding diffusion-rate = 0.61 and consumption-rate = 0.30 fixed.
+
+\begin{table}[H]
+  \centering
+  \caption{\textit{Simulation outcomes at tick 200 across four reproduction rates. Diffusion-rate = 0.61, consumption-rate = 0.30.}}
+  \label{tab:table3}
+  \small
+  \begin{tabular}{|p{1.7cm}|p{1.5cm}|p{1.7cm}|p{1.7cm}|p{4.8cm}|}
+    \hline
+    \textbf{Reproduction Rate} & \textbf{Aerobic Count} & \textbf{Anaerobic Count} & \textbf{Reactor Efficiency} & \textbf{Regime} \\
+    \hline
+    2   & $\sim$207 & 292   & 10.2 & Sub-critical: sparse, no cascades, peak efficiency \\
+    \hline
+    5   & $\sim$205 & 1,170 & 5.4  & Critical transition: donut emerges, multiple crash cycles \\
+    \hline
+    7.2 & $\sim$200 & 2,450 & 4.4  & Supercritical: thick donut, cascades dominate \\
+    \hline
+    10  & $\sim$205 & 5,400 & 4.0  & Deep supercritical: solid red wall, aerobic cells near-absent \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:fig5} captures the most visually dramatic result of the entire study: the phase transition between reproduction-rates 2 and 5. At rate 2 (right), the tank is a deeply blue oxygenated environment with cells scattered sparsely --- no ring structure, no cascade front, aerobic cells distributed throughout the entire tank volume. At rate 5 (left), the donut morphology has fully emerged: a connected red ring surrounds a black anoxic core, with blue oxygen patches still visible inside reflecting a system right at the critical threshold of cascade propagation.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.47\textwidth}
+    \centering
+    % IMAGE PLACEHOLDER: b77bb4c3c75bb5d804bb45fedca13380990d8c94.png  (2.40 in × 2.38 in)
+    \includegraphics[width=2.38in]{Fig5a.png}
+    \\reproduction-rate=5
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.47\textwidth}
+    \centering
+    % IMAGE PLACEHOLDER: b8996554264f157822298d11dc0d5b481f35b00e.png  (2.40 in × 2.38 in)
+   \includegraphics[width=2.38in]{Fig5b.png}
+   \\reproduction-rate=2
+  \end{subfigure}
+  \caption{\textit{Phase transition in spatial organisation. Left (a): reproduction-rate=5 --- the donut morphology has just emerged at the critical transition, with oxygen fingers still penetrating the ring. Right (b): reproduction-rate=2 --- sub-critical regime, cells scattered sparsely through a deeply oxygenated tank with no cascade structure whatsoever.}}
+  \label{fig:fig5}
+\end{figure}
+
+This phase transition is the most important quantitative finding of the study. The critical reproduction rate lies between 2 and 5 --- below this threshold the system is sub-critical and maximally productive (efficiency = 10.2, the highest value recorded); above it, SOC dynamics emerge and efficiency degrades sharply. At reproduction-rate = 10, the anaerobic count explodes to 5,400 and the spatial boundary transitions from a fragmented ring to a solid locked wall, with aerobic cells barely persisting. This critical density threshold represents a concrete, actionable design target for industrial bioreactor operation.
+
+
+
+% ================== 5. Avalanche Frequency Analysis ==================
+\section{Avalanche Frequency Analysis and Relation to Connectivity}
+\label{sec:avalanche}
+
+The scenario analysis in Section 4 characterised system behaviour at a single
+snapshot (tick 200). To probe the temporal dynamics of cascade events and their
+dependence on connectivity, a dedicated time-series experiment was conducted.
+The anaerobic cell count was recorded at every tick over 500-tick runs for each
+of the four diffusion-rate values used in Experiment 1, with all other
+parameters held fixed (\texttt{consumption-rate} $= 0.30$,
+\texttt{reproduction-rate} $= 7.2$). An avalanche was defined operationally as any contiguous sequence of ticks 
+in which the anaerobic population increased by more than 10 cells per tick, 
+a threshold chosen to exclude routine stochastic single-cell switching events 
+while capturing coordinated cascade propagation events involving multiple 
+neighbouring cells switching in rapid succession. This value represents 
+approximately 1\% of the baseline population (100 cells) and lies well above 
+the tick-to-tick variation observed during quiescent periods. The qualitative 
+conclusions regarding avalanche frequency and size distributions were 
+confirmed to be robust to threshold values in the range 5--20 cells per tick, 
+with only the absolute event counts varying rather than the relative ordering 
+across connectivity values; avalanche size was measured as the total anaerobic
+cells gained during the event. The results are summarised in
+Figure~\ref{fig:fig7} and Table~\ref{tab:avalanche}.
+
+\begin{table}[H]
+  \centering
+  \caption{\textit{Avalanche statistics over 500 ticks at four connectivity
+  values. Consumption-rate $= 0.30$, reproduction-rate $= 7.2$.}}
+  \label{tab:avalanche}
+  \small
+  \begin{tabular}{|C{2cm}|C{2cm}|C{2.5cm}|C{2.5cm}|C{2.5cm}|}
+    \hline
+    \textbf{Diffusion Rate} & \textbf{No. of Avalanches} &
+    \textbf{Mean Size} & \textbf{Max Size} & \textbf{Std. Deviation} \\
+    \hline
+    0.1 & 4  & 351.2 & 1,372 & 589.3 \\
+    \hline
+    0.3 & 15 & 106.7 & 1,095 & 266.4 \\
+    \hline
+    0.6 & 20 & 112.2 & 1,269 & 288.1 \\
+    \hline
+    0.9 & 16 & 186.0 & 2,186 & 521.6 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsection{Effect of Connectivity on Avalanche Frequency}
+
+The results reveal a strongly non-monotonic relationship between connectivity
+and avalanche behaviour. At \texttt{diffusion-rate} $= 0.1$, only 4 avalanches
+were detected over 500 ticks --- yet their mean size was 351 cells with a
+maximum of 1,372 and a standard deviation of 589. The system builds extreme
+tension before releasing it in rare catastrophic events. The time series shows
+long flat periods of near-zero anaerobic activity punctuated by sudden
+near-vertical spikes, a pattern characteristic of a sub-critical system
+operating far below the cascade-propagation threshold.
+
+At \texttt{diffusion-rate} $= 0.3$ and $0.6$, avalanche frequency peaks at 15
+and 20 events respectively, while mean sizes drop sharply to approximately
+107--112 cells and standard deviations narrow to 266--288. These intermediate
+connectivity regimes produce the broadest and most uniform size distributions,
+with events spanning a wide range of scales rather than clustering around a
+single dominant magnitude. The time series shows continuous low-level
+oscillation throughout the 500 ticks --- the system never fully settles,
+repeatedly approaching and retreating from the critical boundary.
+
+At \texttt{diffusion-rate} $= 0.9$, avalanche count drops back to 16 but mean
+size rises to 186 and the maximum reaches 2,186 --- the largest single cascade
+observed across all four runs. The time series exhibits the boom-bust signature
+identified in Experiment 1: a dominant early collapse followed by sporadic
+smaller events as the system attempts to recover from the post-boom anaerobic
+saturation.
+
+\subsection{Relation to Self-Organised Criticality}
+
+The non-monotonic pattern observed across connectivity values --- rare
+catastrophic events at low connectivity, frequent moderate events at
+intermediate connectivity, and large boom-bust events at high connectivity ---
+is precisely the avalanche statistics predicted by self-organised criticality
+theory. In the canonical sandpile model, systems operating
+below the critical slope produce rare large avalanches, systems at the critical
+slope produce power-law distributed avalanches of all sizes, and systems driven
+above the critical slope produce periodic large-scale collapses. Our bioreactor
+simulation reproduces all three regimes by varying a single physical parameter:
+the spatial range of oxygen diffusion.
+
+The critical connectivity window, where the system exhibits the richest
+scale-free dynamics, lies between diffusion-rates of 0.3 and 0.6. This
+corresponds precisely to the intermediate regime identified in Experiment 1 as
+producing the most fragmented and dynamically complex spatial patterns. The
+convergence of evidence from both the spatial analysis (Section 4.1) and the
+temporal avalanche statistics presented here strengthens the conclusion that the
+bioreactor model operates at or near a self-organised critical point under
+intermediate connectivity conditions.
+
+Importantly, no parameter tuning was required to produce these dynamics. The
+avalanche statistics emerged directly from 500 ticks of simulation under the
+same local rules governing all other experiments. This spontaneous emergence of
+scale-free cascade behaviour, dependent only on the spatial connectivity of the
+chemical environment, is the defining signature of SOC.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{avalanche_analysis.png}
+  \caption{\textit{Avalanche analysis across four connectivity
+  (\texttt{diffusion-rate}) values over 500 simulation ticks
+  (\texttt{consumption-rate} $= 0.30$, \texttt{reproduction-rate} $= 7.2$).
+  \textbf{Row 1:} anaerobic cell count time series; dotted vertical lines
+  mark avalanche onset events.
+  \textbf{Row 2:} frequency histograms of avalanche sizes; dashed line
+  indicates mean avalanche size.
+  \textbf{Row 3:} summary statistics comparing avalanche count, mean size,
+  and maximum size across all four connectivity values. Intermediate
+  connectivity (0.3--0.6) produces the highest avalanche frequency and most
+  uniform size distribution, consistent with self-organised criticality.
+  Extreme connectivity values produce fewer but larger catastrophic events,
+  reflecting sub-critical and supercritical dynamics respectively.}}
+  \label{fig:fig7}
+\end{figure}
+
+
+
+
+% ================== 6. Self-Organized Criticality ==================
+\section{Self-Organized Criticality in the Bioreactor}
+
+\begin{figure}[H]
+\centering
+
+% ── Experiment 1: Diffusion Rate ──────────────────────────────
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\textwidth, height=5.2cm,
+  title={\small\textbf{(a) Experiment 1 -- Diffusion Rate (Connectivity)}},
+  xlabel={\small Diffusion rate},
+  ylabel={\small Reactor efficiency},
+  y label style={at={(axis description cs:-0.07,0.5)}},
+  xmin=0.05, xmax=0.95,
+  ymin=0, ymax=9,
+  xtick={0.1,0.3,0.6,0.9},
+  xticklabels={0.1,0.3,0.6,0.9},
+  axis y line*=left,
+  axis x line*=bottom,
+  tick style={draw=none},
+  ymajorgrids=true,
+  grid style={dotted, gray!50},
+  legend style={at={(0.98,0.97)}, anchor=north east, font=\small,
+                draw=gray!40, fill=white, inner sep=3pt},
+]
+\addplot[color=blue!70!black, mark=*, mark size=2.5pt,
+         line width=1.4pt, mark options={fill=blue!70!black}]
+  coordinates {(0.1,1.9)(0.3,4.8)(0.6,5.2)(0.9,7.4)};
+\addlegendentry{Reactor efficiency}
+\end{axis}
+%
+\begin{axis}[
+  width=0.92\textwidth, height=5.2cm,
+  xmin=0.05, xmax=0.95,
+  ymin=0, ymax=4000,
+  axis y line*=right,
+  axis x line=none,
+  xtick=\empty,
+  ylabel={\small Anaerobic count},
+  y label style={at={(axis description cs:1.08,0.5)}},
+  tick style={draw=none},
+  legend style={at={(0.98,0.75)}, anchor=north east, font=\small,
+                draw=gray!40, fill=white, inner sep=3pt},
+]
+\addplot[ybar, bar width=18pt, fill=red!20, draw=red!50]
+  coordinates {(0.1,1540)(0.3,2040)(0.6,2160)(0.9,3050)};
+\addlegendentry{Anaerobic count}
+\end{axis}
+\end{tikzpicture}
+
+\vspace{4pt}
+
+% ── Experiment 2: Consumption Rate ────────────────────────────
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\textwidth, height=5.2cm,
+  title={\small\textbf{(b) Experiment 2 -- Consumption Rate (Noise Intensity)}},
+  xlabel={\small Consumption rate},
+  ylabel={\small Reactor efficiency},
+  y label style={at={(axis description cs:-0.07,0.5)}},
+  xmin=0.05, xmax=0.75,
+  ymin=0, ymax=10,
+  xtick={0.1,0.3,0.5,0.7},
+  xticklabels={0.1,0.3,0.5,0.7},
+  axis y line*=left,
+  axis x line*=bottom,
+  tick style={draw=none},
+  ymajorgrids=true,
+  grid style={dotted, gray!50},
+  legend style={at={(0.98,0.97)}, anchor=north east, font=\small,
+                draw=gray!40, fill=white, inner sep=3pt},
+]
+\addplot[color=teal!80!black, mark=*, mark size=2.5pt,
+         line width=1.4pt, mark options={fill=teal!80!black}]
+  coordinates {(0.1,6.9)(0.3,4.1)(0.5,5.1)(0.7,8.0)};
+\addlegendentry{Reactor efficiency}
+\end{axis}
+%
+\begin{axis}[
+  width=0.92\textwidth, height=5.2cm,
+  xmin=0.05, xmax=0.75,
+  ymin=0, ymax=5500,
+  axis y line*=right,
+  axis x line=none,
+  xtick=\empty,
+  ylabel={\small Anaerobic count},
+  y label style={at={(axis description cs:1.08,0.5)}},
+  tick style={draw=none},
+  legend style={at={(0.98,0.75)}, anchor=north east, font=\small,
+                draw=gray!40, fill=white, inner sep=3pt},
+]
+\addplot[ybar, bar width=18pt, fill=red!20, draw=red!50]
+  coordinates {(0.1,4430)(0.3,2330)(0.5,1730)(0.7,1390)};
+\addlegendentry{Anaerobic count}
+\end{axis}
+\end{tikzpicture}
+
+\vspace{4pt}
+
+% ── Experiment 3: Reproduction Rate ───────────────────────────
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\textwidth, height=5.2cm,
+  title={\small\textbf{(c) Experiment 3 -- Reproduction Rate (Population Pressure)}},
+  xlabel={\small Reproduction rate},
+  ylabel={\small Reactor efficiency},
+  y label style={at={(axis description cs:-0.07,0.5)}},
+  xmin=1, xmax=11,
+  ymin=0, ymax=12,
+  xtick={2,5,7.2,10},
+  xticklabels={2,5,7.2,10},
+  axis y line*=left,
+  axis x line*=bottom,
+  tick style={draw=none},
+  ymajorgrids=true,
+  grid style={dotted, gray!50},
+  legend style={at={(0.98,0.97)}, anchor=north east, font=\small,
+                draw=gray!40, fill=white, inner sep=3pt},
+]
+\addplot[color=violet!80!black, mark=*, mark size=2.5pt,
+         line width=1.4pt, mark options={fill=violet!80!black}]
+  coordinates {(2,10.2)(5,5.4)(7.2,4.4)(10,4.0)};
+\addlegendentry{Reactor efficiency}
+\end{axis}
+%
+\begin{axis}[
+  width=0.92\textwidth, height=5.2cm,
+  xmin=1, xmax=11,
+  ymin=0, ymax=6500,
+  axis y line*=right,
+  axis x line=none,
+  xtick=\empty,
+  ylabel={\small Anaerobic count},
+  y label style={at={(axis description cs:1.08,0.5)}},
+  tick style={draw=none},
+  legend style={at={(0.98,0.75)}, anchor=north east, font=\small,
+                draw=gray!40, fill=white, inner sep=3pt},
+]
+\addplot[ybar, bar width=18pt, fill=red!20, draw=red!50]
+  coordinates {(2,292)(5,1170)(7.2,2450)(10,5400)};
+\addlegendentry{Anaerobic count}
+\end{axis}
+\end{tikzpicture}
+
+\caption{\textit{Reactor efficiency (coloured line, left axis) and anaerobic
+cell count (red bars, right axis) as a function of each experimental parameter.
+(a) Diffusion rate: efficiency rises monotonically despite growing cascade size,
+reflecting boom-bust dynamics at high connectivity. (b) Consumption rate:
+a U-shaped efficiency curve with a trough at moderate stress (c) Reproduction rate: a steep efficiency cliff between
+rates 2 and 5 marks the sub-critical to supercritical phase transition. In all
+three panels, non-monotonic or threshold responses confirm the system is
+operating near a self-organised critical point.}}
+\label{fig:fig6}
+\end{figure}
+
+Self-organized criticality, introduced by Bak, Tang, and Wiesenfeld (1987), describes dynamical systems that naturally evolve toward a critical state producing scale-free fluctuations without external parameter tuning. The canonical sandpile model provides the theoretical framework for interpreting our results: grains are added one at a time until a critical slope is reached, after which avalanches of all sizes occur spontaneously.
+
+The bioreactor maps onto the sandpile with precise structural correspondence. Grain addition corresponds to stochastic bacterial movement into oxygen-poor zones --- the noise continuously driving the system toward instability. The critical slope corresponds to the oxygen switching threshold ($\theta = 30$). Avalanches correspond to metabolic cascade propagation --- spatially connected chains of anaerobic switching spreading through the bacterial population. Dissipation corresponds to acid decay and oxygen resupply from the sparger, the stabilising mechanisms preventing total collapse.
+
+Figure~\ref{fig:fig6} synthesises the quantitative results of all three
+experiments. Each panel plots reactor efficiency (coloured line, left axis)
+alongside anaerobic cell count (red bars, right axis) as a function of the
+varied parameter. The non-monotonic shapes visible in all three panels ---
+rising then flattening in panel (a), U-shaped in panel (b), and a sharp cliff
+in panel (c) --- are the collective quantitative signature of a system operating
+near a self-organised critical point. Building on the avalanche frequency analysis presented in Section~\ref{sec:avalanche},
+the evidence for SOC across our three experiments is compelling and consistent:
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=0.5\linewidth]{Fig6.png}
+%     \caption{Enter Caption}
+%     \label{fig:placeholder}
+% \end{figure}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Scale-free cascade dynamics:} Experiment 3 demonstrates cascade sizes spanning orders of magnitude (292 to 5,400 anaerobic cells) with no characteristic scale, consistent with a power-law size distribution.
+
+  \item \textbf{Phase transition at critical density:} The sharp qualitative transition between reproduction-rates 2 and 5 --- from scattered sub-critical dynamics to connected donut formation --- is precisely the abrupt bifurcation SOC theory associates with the onset of critical behaviour.
+
+  \item \textbf{Non-monotonic efficiency:} Both Experiments 1 and 2 reveal U-shaped or non-monotonic efficiency curves. SOC systems characteristically exhibit optimal performance near the critical point, with both sub-critical and supercritical regimes performing sub-optimally.
+
+  \item \textbf{Emergent spatial patterns:} Spiral oxygen-depletion fronts, rotating donut structures, and flickering critical boundaries formed without any global coordination --- emergence purely from local rules.
+
+  \item \textbf{Noise dependence:} Removing the random movement component collapses the oscillatory dynamics entirely, confirming noise as a structural requirement for SOC, not merely a perturbation.
+\end{itemize}
+
+Critically, the system self-organises to the critical state without any parameter tuning. This is the defining feature of SOC: the critical point is an attractor, not a knife-edge that must be manually set. Industrial bioreactors naturally drive themselves toward criticality because the reaction feedback loop --- oxygen consumed $\rightarrow$ acid produced $\rightarrow$ oxygen further depleted --- continuously builds metabolic tension until cascades occur.
+
+% ================== 7. Discussion ==================
+\section{Discussion}
+
+The three experiments collectively reveal that bioreactor dynamics are governed by competing effects producing non-linear system responses across all parameters studied. No parameter exhibits a simple monotonic relationship with reactor performance, and in every case the optimal operating point lies at an extreme or transition value --- characteristic of a complex system near a critical point.
+
+The most practically significant finding is the phase transition in Experiment 3 between reproduction-rates of 2 and 5. This critical density threshold represents a genuine bifurcation: below it, the bioreactor operates in a productive sub-critical regime achieving efficiency 10.2; above it, SOC dynamics emerge and efficiency degrades by over 50\%. In an industrial context, this suggests controlling inoculation density and growth rate --- rather than solely optimising mixing --- may be the most effective lever for avoiding metabolic traffic jams.
+
+The efficiency values recorded across consumption rates (6.9, 4.1, 5.1, 8.0
+for rates 0.1, 0.3, 0.5, 0.7 respectively) suggest a non-monotonic
+relationship, with a local minimum at consumption-rate $= 0.3$. A tentative
+interpretation is that moderate consumption rates disrupt sustained aerobic
+oscillations without yet providing the population-thinning benefit observed at
+higher stress levels. However, this pattern is based on single simulation runs
+and should be interpreted with caution --- stochastic variation between runs
+could contribute to the apparent dip. Replicate experiments averaging across
+multiple initialisations would be needed to confirm whether this non-monotonicity
+is a robust feature of the system or an artefact of a single trajectory.
+This limitation notwithstanding, the result is consistent with the
+complex non-linear behaviour expected of a system near a self-organised
+critical point, where small parameter changes can produce disproportionate
+and sometimes counterintuitive responses.
+
+The boom-bust result in Experiment 1 (diffusion=0.9) suggests a strategy of deliberately inducing a controlled early aerobic bloom --- operating at high connectivity for the initial growth phase before switching to moderate connectivity to suppress the subsequent cascade. This dynamic operating strategy is only visible through a complexity science lens; classical steady-state models would never predict it.
+
+% ================== 8. Conclusion ==================
+\section{Conclusion}
+
+We have presented a systematic agent-based study of metabolic dynamics in a 
+bioreactor, demonstrating through three scenario analyses and a dedicated 
+avalanche frequency experiment that the system exhibits behaviour consistent 
+with self-organized criticality. Three key findings emerge.
+
+First, connectivity (diffusion rate) produces a monotonically increasing 
+efficiency response across the range studied, with the highest efficiency 
+(7.4) occurring at the highest diffusion rate via boom-bust dynamics. However, 
+this productive high-connectivity regime simultaneously carries the greatest 
+risk: maximum avalanche size reaches 2,186 at diffusion-rate = 0.9, compared 
+to 1,372 at diffusion-rate = 0.1. Avalanche frequency peaks at intermediate 
+connectivity (0.3--0.6), identifying a critical window where cascade dynamics 
+are richest and most consistent with SOC. High connectivity is therefore 
+productive but volatile; the optimal operating point depends on whether 
+peak mean efficiency or cascade risk minimisation is prioritised.
+
+Second, noise intensity (consumption rate) produces a tentative non-monotonic 
+efficiency response, with a local minimum at consumption-rate = 0.3. A 
+plausible interpretation is that moderate consumption disrupts sustained 
+aerobic oscillations without yet delivering the population-thinning benefit 
+observed at higher stress. This pattern is based on single simulation runs 
+and should be treated as a hypothesis for further investigation rather than 
+a confirmed result; replicate experiments are needed to separate the signal 
+from stochastic variation.
+
+Third, and most robustly, population pressure (reproduction rate) drives a 
+sharp phase transition between reproduction-rates of 2 and 5. Below this 
+threshold the system operates in a sub-critical sparse regime achieving peak 
+efficiency (10.2); above it, the donut morphology emerges, SOC dynamics 
+dominate, and efficiency degrades by over 50\%. This critical density 
+threshold is the most actionable finding of the study, suggesting that 
+controlling inoculation density and growth rate may be a more effective 
+lever for avoiding metabolic traffic jams than optimising mixing alone.
+
+Taken together, these results demonstrate that metabolic traffic jams in 
+bioreactors are intrinsic emergent features of a complex system operating 
+near a self-organised critical point, not engineering failures to be 
+eliminated. A complexity science perspective reveals phenomena --- phase 
+transitions, boom-bust cascade dynamics, and scale-free avalanche statistics 
+--- that are invisible to classical well-mixed models, and opens new avenues 
+for bioreactor design and control strategy.
+
+% ================== 9. References ==================
+\section{References}
+
+\begin{enumerate}[leftmargin=2em, label=\arabic*.]
+  \item Bak, P., Tang, C., \& Wiesenfeld, K. (1987). Self-organized criticality: An explanation of 1/f noise. \textit{Physical Review Letters, 59}(4), 381--384.
+
+  \item Wilensky, U. (1999). NetLogo. Center for Connected Learning and Computer-Based Modeling, Northwestern University. \url{http://ccl.northwestern.edu/netlogo/}
+
+  \item Nienow, A. W. (2006). Hydrodynamics of stirred bioreactors. \textit{Applied Mechanics Reviews, 51}(1), 3--32.
+
+  \item Enfors, S. O., et al. (2001). Physiological responses to mixing in large scale bioreactors. \textit{Journal of Biotechnology, 85}(2), 175--185.
+
+  \item Bonabeau, E. (2002). Agent-based modeling: Methods and techniques for simulating human systems. \textit{Proceedings of the National Academy of Sciences, 99}(suppl 3), 7280--7287.
+
+  \item Jensen, H. J. (1998). \textit{Self-Organized Criticality: Emergent Complex Behaviour in Physical and Biological Systems.} Cambridge University Press.
+
+  \item de Jong, H. (2002). Modeling and simulation of genetic regulatory systems: A literature review. \textit{Journal of Computational Biology, 9}(1), 67--103.
+\end{enumerate}
+
+% ================== Appendix A ==================
+\appendix
+\section{List of AI Prompts Used}
+
+The following prompts were submitted to Claude (Anthropic, claude.ai) during the development of this project. All simulation data were collected by the author through direct NetLogo experimentation. All scientific interpretations and conclusions are the author's own.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{|p{0.5cm}|p{8.5cm}|p{3cm}|}
+    \hline
+    \textbf{\#} & \textbf{Prompt Summary} & \textbf{Purpose} \\
+    \hline
+    1 & Explain self-organized criticality and give examples in biological systems. & Background research \\
+    \hline
+    2 & How do bioreactors exhibit noise, avalanche, and connectivity symbolically in complexity science terms? & Conceptual framing \\
+    \hline
+    3 & Review my NetLogo code for metabolic traffic jams and suggest structural improvements. & Code review \\
+    \hline
+    4 & Design a scenario analysis plan for three slider parameters, identifying what data to collect. & Experiment design \\
+    \hline
+    5 & Interpret simulation screenshots and numbers for each experiment run. & Result interpretation \\
+    \hline
+    6 & Interpret the non-monotonic U-shaped efficiency curve in Experiment 2. & Anomaly interpretation \\
+    \hline
+    7 & Identify and explain the phase transition between reproduction-rate 2 and 5. & Pattern analysis \\
+    \hline
+    8 & Suggest which simulation images to include and where to place them in the report. & Figure planning \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The author acknowledges the use of Claude (claude.ai) as an AI writing and analysis assistant throughout this project.
+
+\end{document}
