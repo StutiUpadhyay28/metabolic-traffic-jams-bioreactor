@@ -43,6 +43,7 @@ It arises purely from local rules, consistent with **self-organized criticality 
 │   ├── fig4.png                            # Spatial pattern: consumption = 0.1
 │   ├── fig5a.png                           # Spatial pattern: reproduction = 5
 │   ├── fig5b.png                           # Spatial pattern: reproduction = 2
+│   ├── fig6.png                            # Experiment trend analysis
 │   ├── Interface.png                       # Interface of the NetLogo Simulation
 │   └── avalanche_analysis.png              # Generated avalanche frequency figure
 │
