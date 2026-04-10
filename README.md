@@ -35,9 +35,6 @@ It arises purely from local rules, consistent with **self-organized criticality 
 │   ├── anaerobic_conn0.6_cons0.3.csv       # Time-series: diffusion-rate = 0.6
 │   └── anaerobic_conn0.9_cons0.3.csv       # Time-series: diffusion-rate = 0.9
 │
-├── analysis/
-│   └── avalanche_analysis.py               # Python script for avalanche analysis
-│
 ├── figures/
 │   ├── fig1.png                            # Baseline simulation at tick ~65
 │   ├── fig2.png                            # Population dynamics plot
@@ -67,24 +64,6 @@ It arises purely from local rules, consistent with **self-organized criticality 
 4. Click **Setup** to initialise the simulation
 5. Click **Go** to run
 6. To export time-series data for avalanche analysis, run to tick 500 then click **Export Data**
-
----
-
-## How to Reproduce the Avalanche Analysis (Figure 6)
-
-**Requirements:** Python 3.8+, with `numpy`, `pandas`, `matplotlib`
-
-```bash
-# Install dependencies
-pip install numpy pandas matplotlib
-
-# Run analysis (from project root)
-cd analysis/
-python avalanche_analysis.py
-```
-
-The script reads the four CSV files from `../data/` and saves
-`avalanche_analysis.png` to the current directory.
 
 ---
 
