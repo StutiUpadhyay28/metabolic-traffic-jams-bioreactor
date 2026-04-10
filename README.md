@@ -27,63 +27,53 @@ It arises purely from local rules, consistent with **self-organized criticality 
 
 ```
 ├── simulation/
-│   └── cll798_MetabolicTrafficJams.nlogo   # NetLogo model (main simulation file)
+│   └── cll798_MetabolicTrafficJams.nlogo
 │
 ├── data/
-│   ├── anaerobic_conn0.1_cons0.3.csv       # Time-series: diffusion-rate = 0.1
-│   ├── anaerobic_conn0.3_cons0.3.csv       # Time-series: diffusion-rate = 0.3
-│   ├── anaerobic_conn0.6_cons0.3.csv       # Time-series: diffusion-rate = 0.6
-│   └── anaerobic_conn0.9_cons0.3.csv       # Time-series: diffusion-rate = 0.9
+│   ├── anaerobic_conn0.1_cons0.3.csv
+│   ├── anaerobic_conn0.3_cons0.3.csv
+│   ├── anaerobic_conn0.6_cons0.3.csv
+│   └── anaerobic_conn0.9_cons0.3.csv
 │
 ├── analysis/
-│   └── avalanche_analysis.py               # Python script for avalanche analysis
+│   └── avalanche_analysis.py
 │
 ├── figures/
-│   ├── fig1.png                            # Baseline simulation at tick ~65
-│   ├── fig2.png                            # Population dynamics plot
-│   ├── fig3a.png                           # Spatial pattern: diffusion = 0.3
-│   ├── fig3b.png                           # Spatial pattern: diffusion = 0.9
-│   ├── fig4.png                            # Spatial pattern: consumption = 0.1
-│   ├── fig5a.png                           # Spatial pattern: reproduction = 5
-│   ├── fig5b.png                           # Spatial pattern: reproduction = 2
-│   └── avalanche_analysis.png             # Generated avalanche frequency figure
+│   ├── fig1.png
+│   ├── fig2.png
+│   ├── fig3a.png
+│   ├── fig3b.png
+│   ├── fig4.png
+│   ├── fig5a.png
+│   ├── fig5b.png
+│   └── avalanche_analysis.png
 │
 └── report/
-    ├── cll798_individualproject.pdf        # Final submitted report (PDF)
-    └── bioreactor_report.tex              # LaTeX source file
+    ├── cll798_individualproject.pdf
+    └── bioreactor_report.tex
 ```
 
 ---
 
 ## How to Run the Simulation
 
-1. Download and install **NetLogo 6.4** from [ccl.northwestern.edu/netlogo](https://ccl.northwestern.edu/netlogo/)
+1. Download and install **NetLogo 6.4**
 2. Open `simulation/cll798_MetabolicTrafficJams.nlogo`
-3. In the **Interface** tab, adjust the three sliders:
-   - `diffusion-rate` — controls oxygen transport range (connectivity)
-   - `consumption-rate` — controls how fast aerobic cells deplete oxygen (noise)
-   - `reproduction-rate` — controls population growth rate (population pressure)
-4. Click **Setup** to initialise the simulation
-5. Click **Go** to run
-6. To export time-series data for avalanche analysis, run to tick 500 then click **Export Data**
+3. Adjust sliders:
+   - diffusion-rate
+   - consumption-rate
+   - reproduction-rate
+4. Click **Setup** → **Go**
 
 ---
 
-## How to Reproduce the Avalanche Analysis (Figure 6)
-
-**Requirements:** Python 3.8+, with `numpy`, `pandas`, `matplotlib`
+## How to Reproduce the Avalanche Analysis
 
 ```bash
-# Install dependencies
 pip install numpy pandas matplotlib
-
-# Run analysis (from project root)
 cd analysis/
 python avalanche_analysis.py
 ```
-
-The script reads the four CSV files from `../data/` and saves
-`avalanche_analysis.png` to the current directory.
 
 ---
 
@@ -95,58 +85,27 @@ The script reads the four CSV files from `../data/` and saves
 | Critical connectivity window | Avalanche frequency peaks at diffusion-rate 0.3–0.6, consistent with SOC |
 | Noise (consumption rate) | Tentative non-monotonic efficiency response with local minimum at rate 0.3; requires replicate confirmation |
 | Population pressure (reproduction rate) | Sharp phase transition between rates 2 and 5 — sub-critical sparse regime gives way to supercritical donut-forming cascade regime |
-| Peak efficiency | 10.2 at reproduction-rate = 2 (sub-critical regime) |
 
 ---
 
 ## Complexity Science Concepts
 
-| Concept | Manifestation in this system |
+| Concept | Manifestation |
 |---|---|
-| **Noise** | Stochastic Brownian cell movement (±10° random perturbation per tick) seeding cascade events |
-| **Avalanche** | Cascading anaerobic metabolic switching propagating through spatially connected bacterial population |
-| **Connectivity** | Spatial range of oxygen and acid diffusion; population density governing coupling strength between agents |
-
----
-
-## Model Parameters
-
-| Parameter | Default | Range | Role |
-|---|---|---|---|
-| `diffusion-rate` | 0.61 | 0.1 – 0.9 | Oxygen transport (connectivity) |
-| `consumption-rate` | 0.30 | 0.1 – 0.7 | Oxygen depletion per aerobic cell per tick |
-| `reproduction-rate` | 7.2 | 2 – 10 | Probability (%) of cell division per tick |
+| Noise | Stochastic movement |
+| Avalanche | Cascading switching |
+| Connectivity | Diffusion coupling |
 
 ---
 
 ## Dependencies
 
-| Tool | Version | Purpose |
-|---|---|---|
-| NetLogo | 6.4 | Agent-based simulation |
-| Python | 3.8+ | Avalanche data analysis |
-| numpy | any | Numerical computation |
-| pandas | any | CSV data loading |
-| matplotlib | any | Figure generation |
+- NetLogo 6.4  
+- Python 3.8+  
+- numpy, pandas, matplotlib  
 
 ---
 
 ## Acknowledgements
 
-AI assistance (Claude, Anthropic) was used for complexity science framing,
-code review, experiment design guidance, result interpretation, and report
-drafting. All simulation data were collected by the author through direct
-NetLogo experimentation. All scientific interpretations and conclusions are
-the author's own. A full list of AI prompts used is provided in Appendix A
-of the project report.
-
----
-
-## References
-
-1. Bak, P., Tang, C., & Wiesenfeld, K. (1987). Self-organized criticality: An explanation of 1/f noise. *Physical Review Letters, 59*(4), 381–384.
-2. Wilensky, U. (1999). NetLogo. Center for Connected Learning and Computer-Based Modeling, Northwestern University. http://ccl.northwestern.edu/netlogo/
-3. Nienow, A. W. (2006). Hydrodynamics of stirred bioreactors. *Applied Mechanics Reviews, 51*(1), 3–32.
-4. Enfors, S. O., et al. (2001). Physiological responses to mixing in large scale bioreactors. *Journal of Biotechnology, 85*(2), 175–185.
-5. Bonabeau, E. (2002). Agent-based modeling: Methods and techniques for simulating human systems. *PNAS, 99*(suppl 3), 7280–7287.
-6. Jensen, H. J. (1998). *Self-Organized Criticality*. Cambridge University Press.
+AI assistance (Claude) was used for framing, code review, and interpretation. All conclusions are the author's own.
